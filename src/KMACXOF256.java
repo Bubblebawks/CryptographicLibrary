@@ -1,3 +1,4 @@
+
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -64,6 +65,7 @@ public class KMACXOF256 {
         cSHAKE256(newX, L, "KMAC", S);
     }
 
+    //cSHAKE algo from NIST - cSHAKE hash of a message
     void cSHAKE256(byte[] X, int L, String N, String S) {
         byte[] n = encodeString(N.getBytes(StandardCharsets.UTF_8));
         byte[] s = encodeString(S.getBytes(StandardCharsets.UTF_8));
@@ -86,6 +88,7 @@ public class KMACXOF256 {
     }
 
 
+    //right encode function from NIST
     byte[] rightEncode(BigInteger x) {
         byte[] retBytes = x.toByteArray();
         byte[] addBytes = BigInteger.valueOf(retBytes.length).toByteArray();
@@ -98,6 +101,7 @@ public class KMACXOF256 {
     }
 
 
+    //left encode function from NIST
     byte[] leftEncode(BigInteger x) {
         byte[] retBytes = x.toByteArray();
         byte[] addBytes = BigInteger.valueOf(retBytes.length).toByteArray();
@@ -109,6 +113,7 @@ public class KMACXOF256 {
         return totalBytes;
     }
 
+    //encode string from NIST
     public byte[] encodeString(byte[] s) {
         byte[] first = leftEncode(BigInteger.valueOf(s.length));
         byte[] output = Arrays.copyOf(first, first.length + s.length);
@@ -116,6 +121,7 @@ public class KMACXOF256 {
         return output;
     }
 
+    //bytepad from NIST
     public byte[] bytepad(byte[] X, int w) {
         byte[] firstEncode = leftEncode(BigInteger.valueOf(w));
         byte[] z = new byte[firstEncode.length + X.length];
@@ -136,6 +142,7 @@ public class KMACXOF256 {
         return sha3(inData, mdLength);
     }
 
+    //keccakf function
     public void keccakf(BigInteger[] state) {
         endianConversion();
         for (int r = 0 ; r < 24; r++) {
@@ -195,6 +202,7 @@ public class KMACXOF256 {
 
     }
 
+    //converts big integer array to byte array
     static byte[] bigIntToByte(BigInteger[] bigIntArr) {
         byte[] byteState = new byte[200];
         int index = 0;
@@ -208,6 +216,7 @@ public class KMACXOF256 {
         return byteState;
     }
 
+    //converts byte array to big integer array
     static BigInteger[] byteToBigInt(byte[] byteArr) {
         BigInteger[] intState = new BigInteger[25];
 
@@ -251,6 +260,7 @@ public class KMACXOF256 {
         return sha3_final();
     }
 
+    //shifts left or right of value y
     public BigInteger ROTL64(BigInteger x, int y) {
         return x.shiftLeft(y).or(x.shiftRight(64 - y));
     }
@@ -265,20 +275,5 @@ public class KMACXOF256 {
             }
             myState[i] = new BigInteger(rev);
         }
-    }
-
-    public String byteToString(byte toConvert) {
-        String toReturn = "";
-
-        byte byteMask = 0b0000001;
-
-        for (int bitIndex = 0; bitIndex < 8; bitIndex++) {
-            int bit = byteMask & toConvert;
-            if (bit == 0) toReturn = "0" + toReturn;
-            else toReturn = "1" + toReturn;
-            byteMask = (byte) (byteMask * 2);
-        }
-
-        return toReturn;
     }
 }

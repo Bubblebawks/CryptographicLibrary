@@ -8,7 +8,9 @@ import java.awt.*;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Scanner;
@@ -31,7 +33,7 @@ public class Main2 {
                     byte[] data = getData(input);
                     byte[] crypto = hash("".getBytes(), data);
                     if (output.equalsIgnoreCase("f")) {
-                        System.out.println("Enter folder path:");
+                        System.out.println("Enter output folder path:");
                         String folderPath = scnr.nextLine();
                         outputFile(folderPath + "\\Hash.txt", convertBytesToHex(crypto));
                     } else {
@@ -45,7 +47,7 @@ public class Main2 {
                     byte[] data1 = getData(input);
                     byte[] crypto1 = hash(key, data1);
                     if (output.equalsIgnoreCase("f")) {
-                        System.out.println("Enter folder path:");
+                        System.out.println("Enter output folder path:");
                         String folderPath = scnr.nextLine();
                         outputFile(folderPath + "\\MAC.txt", convertBytesToHex(crypto1));
                     } else {
@@ -63,26 +65,7 @@ public class Main2 {
                 case "d":
                     byte[] crypto2 = getData(input);
                     byte[] key2 = getKey(input);
-                    byte[] z = new byte[64];
-                    byte[] c = new byte[crypto2.length - 128];
-                    byte[] t = new byte[64];
-                    System.arraycopy(crypto2, 0, z, 0, 64);
-                    System.arraycopy(crypto2, 64, c, 0, crypto2.length - 128);
-                    System.arraycopy(crypto2, crypto2.length - 64, t, 0, 64);
-                    byte[] message = decrypt(z, key2, c, t);
-                    if (output.equalsIgnoreCase("f")) {
-                        System.out.print("Enter folder path: \n>> ");
-                        String folderPath = scnr.nextLine();
-                        outputFile(folderPath + "\\Crypto.txt", convertBytesToHex(crypto2));
-                    } else {
-                        // System.out.println(byteToString(crypto2));
-
-                        //printByteData(message);
-                        //System.out.println(hexToString(crypto2.toString()));
-                        System.out.println(convertBytesToHex(crypto2));
-                        System.out.println(new String(message));
-                        System.out.println(convertBytesToHex(message));
-                    }
+                    decrypt(key2, hexStringToByteArray(new String(crypto2, StandardCharsets.UTF_8)), output);
                     break;
 
                 default:
@@ -121,7 +104,8 @@ public class Main2 {
      * @return text within the file in bytes
      */
     private static byte[] readFile() {
-        System.out.print("Enter file path: \n>> ");
+
+        System.out.print("Enter input file path: \n>> ");
         String filePath = scnr.nextLine();
         try (FileInputStream fileInput = new FileInputStream(filePath)) {
             byte[] fileData = fileInput.readAllBytes();
@@ -227,7 +211,15 @@ public class Main2 {
         System.out.println();
         if (inputChoice.equalsIgnoreCase("F")) {
             System.out.print("Enter key filename: \n>> ");
-            return readFile();
+            String key = scnr.nextLine();
+            try (FileInputStream fileInput = new FileInputStream(key)) {
+                byte[] fileData = fileInput.readAllBytes();
+                return fileData;
+            } catch (IOException e) {
+                System.out.println("Error: file input is not valid!");
+                System.exit(0);
+                return null;
+            }
         } else {
             System.out.print("Enter key: \n>> ");
             String key = scnr.nextLine();
@@ -268,46 +260,66 @@ public class Main2 {
             outputFile(folderPath + "\\cryptogram.txt", convertBytesToHex(cryptogram));
         } else {
             System.out.println(convertBytesToHex(cryptogram));
-            //printByteData(cryptogram);
         }
     }
 
     /**
-     * decrypt given text from encryption
-     * @param rand random value from encryption
-     * @param key password/passphrase/key given by user during encryption
-     * @param cipher from cryptogram
-     * @param mac from cryptogram
-     * @return decryption of the given data
+     * decrypt data that is given by user (if user chose "D" or "d")
+     * @param key the password/passphrase/key given by user
+     * @param cryptogram the encrypted data from input or file given by user
+     * @param output the output type of either text or file
      */
-    private static byte[] decrypt1(byte[] rand, byte[] key, byte[] cipher, byte[] mac) {
-        byte[] keka = (new KMACXOF256(addBytes(rand, key), "".getBytes(), 1024, "S")).retrieveData();
-        byte[] ke = Arrays.copyOfRange(keka, 0, keka.length / 2);
-        byte[] ka = Arrays.copyOfRange(keka, keka.length / 2, keka.length);
+    private static void decrypt(byte[] key, byte[] cryptogram, String output) {
+        // parse the cryptogram into its components
+        byte[] initVal = Arrays.copyOfRange(cryptogram, 0, 64);
+        byte[] c = Arrays.copyOfRange(cryptogram, 64, cryptogram.length - 512 / 8);
+        byte[] t = Arrays.copyOfRange(cryptogram, cryptogram.length - 512 / 8, cryptogram.length);
 
-        byte[] m = xorBytes((new KMACXOF256(ke, "".getBytes(), cipher.length * 8, "SKE")).retrieveData(), cipher);
-        byte[] tPrime = (new KMACXOF256(ka, m, 512, "SKA")).retrieveData();
+        // calculate ke and ka
+        byte[] keccak = (new KMACXOF256(addBytes(initVal, key), new byte[0], 1024, "S")).retrieveData();
+        byte[] ke = Arrays.copyOfRange(keccak, 0, keccak.length / 2);
+        byte[] ka = Arrays.copyOfRange(keccak, keccak.length / 2, keccak.length);
 
-        if (Arrays.equals(tPrime, mac)) {
-            return m;
+        // verify the MAC
+        byte[] t_prime = (new KMACXOF256(ka, c, 512, "SKA")).retrieveData();
+        /* check this ?
+        if (!Arrays.equals(t, t_prime)) {
+            System.out.println("MAC verification failed. The message may have been tampered with.");
+            return;
+        }
+         */
+        // decrypt the message
+        byte[] m = xorBytes((new KMACXOF256(ke, new byte[0], c.length * 8, "SKE")).retrieveData(), c);
+
+        if (output.equalsIgnoreCase("F")) {
+            System.out.println("Enter folder path:");
+            String folderPath = scnr.nextLine();
+            outputFile(folderPath + "\\message.txt", new String(m, StandardCharsets.UTF_8));
         } else {
-            return null;
+            System.out.println(new String(m, StandardCharsets.UTF_8));
         }
     }
-    private static byte[] decrypt(byte[] rand, byte[] key, byte[] cipher, byte[] mac) {
-        byte[] keka = (new KMACXOF256(addBytes(rand, key), "".getBytes(), 1024, "S")).retrieveData();
-        byte[] ke = Arrays.copyOfRange(keka, 0, keka.length / 2);
-        byte[] ka = Arrays.copyOfRange(keka, keka.length / 2, keka.length);
 
-        byte[] m = xorBytes((new KMACXOF256(ke, "".getBytes(), cipher.length * 8, "SKE")).retrieveData(), cipher);
-        byte[] tPrime = (new KMACXOF256(ka, m, 512, "SKA")).retrieveData();
-
-        if (Arrays.equals(tPrime, Arrays.copyOfRange(mac, 0, tPrime.length))) {
-            return m;
-        } else {
-            return null;
+    public static String convertBytesToString(byte[] data) {
+        String str = "";
+        try {
+            str = new String(data, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
         }
+        return str;
     }
+
+    public static byte[] hexStringToByteArray(String hex) {
+        int len = hex.length();
+        byte[] data = new byte[len / 2];
+        for (int i = 0; i < len; i += 2) {
+            data[i / 2] = (byte) ((Character.digit(hex.charAt(i), 16) << 4)
+                    + Character.digit(hex.charAt(i+1), 16));
+        }
+        return data;
+    }
+
     /**
      * add two given byte arrays together
      * @param b1 byte array 1

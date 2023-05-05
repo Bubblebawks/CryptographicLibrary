@@ -33,7 +33,7 @@ public class Main2 {
                     if (output.equalsIgnoreCase("f")) {
                         System.out.println("Enter folder path:");
                         String folderPath = scnr.nextLine();
-                        outputFile(folderPath + "\\Hash.txt", crypto);
+                        outputFile(folderPath + "\\Hash.txt", convertBytesToHex(crypto));
                     } else {
                         System.out.println("The hash of your text is: " + convertBytesToHex(crypto) + "\n");
                         //printByteData(crypto);
@@ -47,7 +47,7 @@ public class Main2 {
                     if (output.equalsIgnoreCase("f")) {
                         System.out.println("Enter folder path:");
                         String folderPath = scnr.nextLine();
-                        outputFile(folderPath + "\\MAC.txt", crypto1);
+                        outputFile(folderPath + "\\MAC.txt", convertBytesToHex(crypto1));
                     } else {
                         System.out.println(convertBytesToHex(crypto1));
                         //printByteData(crypto);
@@ -73,13 +73,14 @@ public class Main2 {
                     if (output.equalsIgnoreCase("f")) {
                         System.out.print("Enter folder path: \n>> ");
                         String folderPath = scnr.nextLine();
-                        outputFile(folderPath + "\\Crypto.txt", crypto2);
+                        outputFile(folderPath + "\\Crypto.txt", convertBytesToHex(crypto2));
                     } else {
                         // System.out.println(byteToString(crypto2));
 
                         //printByteData(message);
                         //System.out.println(hexToString(crypto2.toString()));
                         System.out.println(convertBytesToHex(crypto2));
+                        System.out.println(new String(message));
                         System.out.println(convertBytesToHex(message));
                     }
                     break;
@@ -137,9 +138,9 @@ public class Main2 {
      * @param filePath filepath given from user
      * @param data data from the function chosen in order to write to file
      */
-    private static void outputFile(String filePath, byte[] data) {
+    private static void outputFile(String filePath, String data) {
         try (FileOutputStream outputStream = new FileOutputStream(filePath)) {
-            outputStream.write(data);
+            outputStream.write(data.getBytes());
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -264,7 +265,7 @@ public class Main2 {
         if (output.equalsIgnoreCase("F")) {
             System.out.println("Enter folder path:");
             String folderPath = scnr.nextLine();
-            outputFile(folderPath + "\\cryptogram.txt", cryptogram);
+            outputFile(folderPath + "\\cryptogram.txt", convertBytesToHex(cryptogram));
         } else {
             System.out.println(convertBytesToHex(cryptogram));
             //printByteData(cryptogram);
@@ -279,7 +280,7 @@ public class Main2 {
      * @param mac from cryptogram
      * @return decryption of the given data
      */
-    private static byte[] decrypt(byte[] rand, byte[] key, byte[] cipher, byte[] mac) {
+    private static byte[] decrypt1(byte[] rand, byte[] key, byte[] cipher, byte[] mac) {
         byte[] keka = (new KMACXOF256(addBytes(rand, key), "".getBytes(), 1024, "S")).retrieveData();
         byte[] ke = Arrays.copyOfRange(keka, 0, keka.length / 2);
         byte[] ka = Arrays.copyOfRange(keka, keka.length / 2, keka.length);
@@ -293,7 +294,20 @@ public class Main2 {
             return null;
         }
     }
+    private static byte[] decrypt(byte[] rand, byte[] key, byte[] cipher, byte[] mac) {
+        byte[] keka = (new KMACXOF256(addBytes(rand, key), "".getBytes(), 1024, "S")).retrieveData();
+        byte[] ke = Arrays.copyOfRange(keka, 0, keka.length / 2);
+        byte[] ka = Arrays.copyOfRange(keka, keka.length / 2, keka.length);
 
+        byte[] m = xorBytes((new KMACXOF256(ke, "".getBytes(), cipher.length * 8, "SKE")).retrieveData(), cipher);
+        byte[] tPrime = (new KMACXOF256(ka, m, 512, "SKA")).retrieveData();
+
+        if (Arrays.equals(tPrime, Arrays.copyOfRange(mac, 0, tPrime.length))) {
+            return m;
+        } else {
+            return null;
+        }
+    }
     /**
      * add two given byte arrays together
      * @param b1 byte array 1
@@ -311,7 +325,7 @@ public class Main2 {
      * takes two byte array and xor
      * @param b1 byte array 1
      * @param b2 byte array 2
-     * @return one byte array from the result of xor 
+     * @return one byte array from the result of xor
      */
     private static byte[] xorBytes(byte[] b1, byte[] b2) {
         int totalLen = Math.min(b1.length, b2.length);

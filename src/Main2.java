@@ -178,8 +178,8 @@ public class Main2 {
 
     /**
      * converts byte to string
-     * @param toConvert
-     * @return
+     * @param toConvert byte input given
+     * @return string conversion of given byte
      */
     private static String byteToString(byte toConvert) {
         StringBuilder toReturn = new StringBuilder(8);
@@ -191,6 +191,12 @@ public class Main2 {
 
         return toReturn.toString();
     }
+
+    /**
+     * convert hexadecimal to string
+     * @param hexString the hexadecimal string that is given
+     * @return string conversion of given hexadecimal
+     */
     private static String hexToString(String hexString){
         StringBuilder output = new StringBuilder();
         for (int i = 0; i < hexString.length(); i += 2) {
@@ -200,14 +206,25 @@ public class Main2 {
         return output.toString();
     }
 
+    /**
+     * hashes given data based on key
+     * @param key passphrase or password given from user
+     * @param data the text or text from file given from user
+     * @return hashed value of data
+     */
     private static byte[] hash(byte[] key, byte[] data) {
         KMACXOF256 sponge = new KMACXOF256(key, data, 512, "T");
         return sponge.retrieveData();
     }
 
+    /**
+     * get the passphrase/password/key from user
+     * @param inputChoice user input choice of either File or Text
+     * @return key given from user
+     */
     private static byte[] getKey(String inputChoice) {
         System.out.println();
-        if (inputChoice.equals("1")) {
+        if (inputChoice.equalsIgnoreCase("F")) {
             System.out.print("Enter key filename: \n>> ");
             return readFile();
         } else {
@@ -216,6 +233,13 @@ public class Main2 {
             return key.getBytes();
         }
     }
+
+    /**
+     * encrypt data that is given by user (if user chose "E" or "e")
+     * @param key the password/passphrase/key given by user
+     * @param data the text from input or file given by user
+     * @param output the output type of either text or file
+     */
     private static void encrypt(byte[] key, byte[] data, String output) {
         // getting a random 512 bit value
         SecureRandom secureRandom = new SecureRandom();
@@ -246,27 +270,49 @@ public class Main2 {
             //printByteData(cryptogram);
         }
     }
-    private static byte[] decrypt(byte[] iv, byte[] key, byte[] c, byte[] t) {
-        byte[] keka = (new KMACXOF256(addBytes(iv, key), "".getBytes(), 1024, "S")).retrieveData();
+
+    /**
+     * decrypt given text from encryption
+     * @param rand random value from encryption
+     * @param key password/passphrase/key given by user during encryption
+     * @param cipher from cryptogram
+     * @param mac from cryptogram
+     * @return decryption of the given data
+     */
+    private static byte[] decrypt(byte[] rand, byte[] key, byte[] cipher, byte[] mac) {
+        byte[] keka = (new KMACXOF256(addBytes(rand, key), "".getBytes(), 1024, "S")).retrieveData();
         byte[] ke = Arrays.copyOfRange(keka, 0, keka.length / 2);
         byte[] ka = Arrays.copyOfRange(keka, keka.length / 2, keka.length);
 
-        byte[] m = xorBytes((new KMACXOF256(ke, "".getBytes(), c.length * 8, "SKE")).retrieveData(), c);
+        byte[] m = xorBytes((new KMACXOF256(ke, "".getBytes(), cipher.length * 8, "SKE")).retrieveData(), cipher);
         byte[] tPrime = (new KMACXOF256(ka, m, 512, "SKA")).retrieveData();
 
-        if (Arrays.equals(tPrime, t)) {
+        if (Arrays.equals(tPrime, mac)) {
             return m;
         } else {
             return null;
         }
     }
 
+    /**
+     * add two given byte arrays together
+     * @param b1 byte array 1
+     * @param b2 byte array 2
+     * @return one byte array with 2 of the given byte arrays
+     */
     private static byte[] addBytes(byte[] b1, byte[] b2) {
         byte[] out = new byte[b1.length + b2.length];
         System.arraycopy(b1, 0, out, 0, b1.length);
         System.arraycopy(b2, 0, out, b1.length, b2.length);
         return out;
     }
+
+    /**
+     * takes two byte array and xor
+     * @param b1 byte array 1
+     * @param b2 byte array 2
+     * @return one byte array from the result of xor 
+     */
     private static byte[] xorBytes(byte[] b1, byte[] b2) {
         int totalLen = Math.min(b1.length, b2.length);
         byte[] result = new byte[totalLen];

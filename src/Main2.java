@@ -1,3 +1,10 @@
+/*
+Vivian Tran, Gil Rabara, Andrew Nguyen
+TCSS 487 Cryptography Project (Part 1)
+5/7/2023
+ */
+
+import java.awt.*;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -19,7 +26,6 @@ public class Main2 {
         String output = scnr.nextLine();
 
             switch (function) {
-
                 case "H":
                 case "h":
                     byte[] data = getData(input);
@@ -29,7 +35,7 @@ public class Main2 {
                         String folderPath = scnr.nextLine();
                         outputFile(folderPath + "\\Hash.txt", crypto);
                     } else {
-                        System.out.println(convertBytesToHex(crypto));
+                        System.out.println("The hash of your text is: " + convertBytesToHex(crypto) + "\n");
                         //printByteData(crypto);
                     }
                     break;
@@ -65,22 +71,21 @@ public class Main2 {
                     System.arraycopy(crypto2, crypto2.length - 64, t, 0, 64);
                     byte[] message = decrypt(z, key2, c, t);
                     if (output.equalsIgnoreCase("f")) {
-                        System.out.println("Enter folder path:");
+                        System.out.print("Enter folder path: \n>> ");
                         String folderPath = scnr.nextLine();
                         outputFile(folderPath + "\\Crypto.txt", crypto2);
                     } else {
                         // System.out.println(byteToString(crypto2));
 
-                        printByteData(crypto2);
-                        System.out.println(hexToString(crypto2.toString()));
+                        //printByteData(message);
+                        //System.out.println(hexToString(crypto2.toString()));
+                        System.out.println(convertBytesToHex(crypto2));
+                        System.out.println(convertBytesToHex(message));
                     }
                     break;
-                case "Q":
-                case "q":
-                    System.out.println(">>>>>>>>>>EXITING PROGRAM<<<<<<<<<<<");
-                    break;
+
                 default:
-                    System.out.println("Invalid mode selected.");
+                    System.out.println("Invalid mode selected.\n>>>>>>>>>> EXITING PROGRAM <<<<<<<<<<<");
                     break;
             }
             System.out.print("Enter your desired function: \nH (hash) " +
@@ -88,7 +93,16 @@ public class Main2 {
              function = scnr.nextLine();
 
         }
+        if(function.equalsIgnoreCase("Q")){
+                System.out.println(">>>>>>>>>> EXITING PROGRAM <<<<<<<<<<<");
+        }
     }
+
+    /**
+     * Get input data from user
+     * @param input either input File or Text
+     * @return read the file, or return the bytes of the text
+     */
     private static byte[] getData(String input) {
         String out = "";
         if (input.equalsIgnoreCase("F")) {
@@ -101,18 +115,10 @@ public class Main2 {
         return null;
     }
 
-    //delete?
-    private static String getInputFile() {
-        System.out.println("Enter file path: \n>> ");
-        return scnr.nextLine();
-    }
-
-    //delete?
-    private static String getOutputFile() {
-        System.out.println("Enter folder path:");
-        return scnr.nextLine();
-    }
-
+    /**
+     * if user chose to input a file, read the text from file
+     * @return text within the file in bytes
+     */
     private static byte[] readFile() {
         System.out.print("Enter file path: \n>> ");
         String filePath = scnr.nextLine();
@@ -125,6 +131,12 @@ public class Main2 {
             return null;
         }
     }
+
+    /**
+     * if user has chosen to get the output in a file form, then write to created file from path given
+     * @param filePath filepath given from user
+     * @param data data from the function chosen in order to write to file
+     */
     private static void outputFile(String filePath, byte[] data) {
         try (FileOutputStream outputStream = new FileOutputStream(filePath)) {
             outputStream.write(data);
@@ -133,6 +145,10 @@ public class Main2 {
         }
     }
 
+    /**
+     * prints the function results into byte form (1's and 0's)
+     * @param data user input data
+     */
     private static void printByteData(byte[] data) {
        // System.out.println(convertBytesToHex(data)); //test
         StringBuilder sb = new StringBuilder();
@@ -144,6 +160,12 @@ public class Main2 {
 
 
     private static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
+
+    /**
+     * converts bytes in to hexadecimal form
+     * @param bytes bytes given in order to convert to hex
+     * @return hex conversion of given byte array
+     */
     private static String convertBytesToHex(byte[] bytes) {
         char[] hexChars = new char[bytes.length * 2];
         for (int i = 0; i < bytes.length; i++) {
@@ -153,6 +175,12 @@ public class Main2 {
         }
         return new String(hexChars);
     }
+
+    /**
+     * converts byte to string
+     * @param toConvert
+     * @return
+     */
     private static String byteToString(byte toConvert) {
         StringBuilder toReturn = new StringBuilder(8);
 
@@ -172,26 +200,6 @@ public class Main2 {
         return output.toString();
     }
 
-    private static final KMACXOF256 SPONGE = new KMACXOF256(new byte[0], new byte[0], 512, "D" );
-    /*
-    private static byte[] hash(byte[] data) {
-        SPONGE.sha3_update(data);
-        return SPONGE.sha3_final();
-    }
-
-    private static byte[] hash(byte[] data) {
-        SPONGE.sha3_update(data);
-        return SPONGE.retrieveData();
-    }
-
-
-    private static byte[] hash(byte[] data) {
-        String key = "";
-        KMACXOF256 sponge = new KMACXOF256(key.getBytes(), data, 512, "D");
-        return sponge.retrieveData();
-    }
-
-     */
     private static byte[] hash(byte[] key, byte[] data) {
         KMACXOF256 sponge = new KMACXOF256(key, data, 512, "T");
         return sponge.retrieveData();
@@ -252,6 +260,7 @@ public class Main2 {
             return null;
         }
     }
+
     private static byte[] addBytes(byte[] b1, byte[] b2) {
         byte[] out = new byte[b1.length + b2.length];
         System.arraycopy(b1, 0, out, 0, b1.length);

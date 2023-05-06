@@ -237,7 +237,20 @@ public class KMACXOF256 {
         }
         endianConversion();
     }
+    /**
+     * convert endian from keccak operation
+     */
+    private void endianConversion() {
+        for (int i = 0; i < 25; i++) {
+            byte[] curr = currState[i].toByteArray();
+            byte[] rev = new byte[curr.length];
 
+            for (int x = 0; x < curr.length; x++) {
+                rev[x] = curr[curr.length - x - 1];
+            }
+            currState[i] = new BigInteger(rev);
+        }
+    }
 
     /**
      * initialize SHA3
@@ -268,7 +281,16 @@ public class KMACXOF256 {
         currState = byteToBigInt(byteState);
         prevByte = j;
     }
-
+    /**
+     * shifts bytes left or right based on value y
+     * @param x bigint number to be rotated
+     * @param y specifies number of bits to rotate
+     * @return bigint rotated by the input number
+     */
+    public BigInteger ROTL64(BigInteger x, int y) {
+        return x.shiftLeft(y).or(x.shiftRight(64 - y));
+    }
+    
     /**
      * convert big int array to byte array
      * @param bigIntArr array to convert to byte array
@@ -340,30 +362,5 @@ public class KMACXOF256 {
         sha3_init();
         sha3_update(in);
         return sha3_final();
-    }
-
-    /**
-     * shifts bytes left or right based on value y
-     * @param x bigint number to be rotated
-     * @param y specifies number of bits to rotate
-     * @return bigint rotated by the input number
-     */
-    public BigInteger ROTL64(BigInteger x, int y) {
-        return x.shiftLeft(y).or(x.shiftRight(64 - y));
-    }
-
-    /**
-     * convert endian from keccak operation
-     */
-    private void endianConversion() {
-        for (int i = 0; i < 25; i++) {
-            byte[] curr = currState[i].toByteArray();
-            byte[] rev = new byte[curr.length];
-
-            for (int x = 0; x < curr.length; x++) {
-                rev[x] = curr[curr.length - x - 1];
-            }
-            currState[i] = new BigInteger(rev);
-        }
     }
 }

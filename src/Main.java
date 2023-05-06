@@ -84,17 +84,7 @@ public class Main {
                 System.out.println(">>>>>>>>>> EXITING PROGRAM <<<<<<<<<<<");
         }
     }
-    private static void printTestVector() {
-        System.out.println("--------Test Vector Start-------");
-        byte[] testData = {00, 01, 02, 03};
-        byte[] testKey = {0b0};
-        String diveyString = "My Tagged Application";
-        KMACXOF256 kmac = new KMACXOF256(testKey, testData, 256, diveyString);
-        byte[] result = kmac.retrieveData();
-        System.out.println("Bytes of data: " + result.length);
-        System.out.println(convertBytesToHex(result));
-        System.out.println("--------Test Vector End-------");
-    }
+
     /**
      * Get input data from user
      * @param input either input File or Text

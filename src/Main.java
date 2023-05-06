@@ -32,7 +32,6 @@ public class Main {
         String output = scnr.nextLine();
 
             switch (function) {
-                case "t" -> printTestVector();
                 case "H", "h" -> {
                     byte[] data = getData(input);
                     byte[] crypto = hash("".getBytes(), data);
@@ -67,7 +66,7 @@ public class Main {
                     assert crypto2 != null;
                     decrypt(key2, hexStringToByteArray(new String(crypto2, StandardCharsets.UTF_8)), output);
                 }
-                default -> System.out.println("Invalid mode selected.\n>>>>>>>>>> EXITING PROGRAM <<<<<<<<<<<");
+                default -> System.out.println("Invalid mode selected.");
             }
             System.out.print("""
                     Enter your desired function:\s
@@ -84,7 +83,6 @@ public class Main {
                 System.out.println(">>>>>>>>>> EXITING PROGRAM <<<<<<<<<<<");
         }
     }
-
     /**
      * Get input data from user
      * @param input either input File or Text
@@ -108,6 +106,7 @@ public class Main {
     private static byte[] readFile() {
         System.out.print("Enter input file path: \n>> ");
         String filePath = scnr.nextLine();
+
         try (FileInputStream fileInput = new FileInputStream(filePath)) {
             return fileInput.readAllBytes();
         } catch (IOException e) {
@@ -221,7 +220,7 @@ public class Main {
         if (output.equalsIgnoreCase("F")) {
             System.out.println("Enter folder path:");
             String folderPath = scnr.nextLine();
-            outputFile(folderPath + "\\cryptogram.txt", convertBytesToHex(cryptogram));
+            outputFile(folderPath + "\\Encryption.txt", convertBytesToHex(cryptogram));
         } else {
             System.out.println("The encryption of your text is: \n" + convertBytesToHex(cryptogram) + "\n");
         }
@@ -256,7 +255,7 @@ public class Main {
         if (output.equalsIgnoreCase("F")) {
             System.out.println("Enter folder path:");
             String folderPath = scnr.nextLine();
-            outputFile(folderPath + "\\message.txt", new String(m, StandardCharsets.UTF_8));
+            outputFile(folderPath + "\\Decryption.txt", new String(m, StandardCharsets.UTF_8));
         } else {
             System.out.println("The decryption of your text is: \n" + new String(m, StandardCharsets.UTF_8) + "\n");
         }

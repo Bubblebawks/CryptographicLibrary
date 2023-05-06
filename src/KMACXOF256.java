@@ -1,3 +1,8 @@
+/*
+Vivian Tran, Gil Rabara, Andrew John Nguyen
+TCSS 487 Cryptography Project (Part 1) - KMACXOF256
+5/7/2023
+ */
 
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
@@ -19,13 +24,14 @@ public class KMACXOF256 {
     int[] keccakf_piln = {10, 7,  11, 17, 18, 3, 5, 16, 8,  21, 24, 4,
             15, 23, 19, 13, 12, 2, 20, 14, 22, 9, 6, 1};
 
-    private byte[] inData;
+    private byte[] bytes;
 
-    //Used for theta function
+    // for theta function
     BigInteger[] bc = new BigInteger[5];
     BigInteger t;
+    BigInteger tPrime;
 
-    BigInteger[] myState = new BigInteger[25]; //each element is a "lane" of the internal state?
+    BigInteger[] currState = new BigInteger[25];
 
 
     //message digest length
@@ -34,9 +40,16 @@ public class KMACXOF256 {
     //message size
     private final int mSize = 72;
 
-    //previous byte track
-    private int pt;
+    //previous byte
+    private int prevByte;
 
+    /**
+     * KMAC function that takes information and produces output given length
+     * @param K data of given key
+     * @param X data given in order to encrypt
+     * @param L length of output
+     * @param S output for strings
+     */
     KMACXOF256(byte[] K, byte[] X, int L, String S){
         //conversion of bits to bytes
         mdLength = L / 8;
@@ -45,27 +58,39 @@ public class KMACXOF256 {
         for (int i = 0; i < 24; i++) {
             RC[i] = new BigInteger(roundConst[i], 16);
         }
-        byte[] x1 = bytepad(encodeString(K), 168);
+        byte[] x1;
+        if (K.length < 168) {
+            x1 = bytepad(encodeString(K), 168);
+        } else {
+            x1 = Arrays.copyOf(K, 168);
+        }
         byte[] x3 = rightEncode(BigInteger.ZERO);
         byte[] newX = new byte[x1.length + X.length + x3.length];
 
-        int index = 0;
+        int i = 0;
         for (byte b : x1) {
-            newX[index] = b;
-            index++;
+            newX[i] = b;
+            i++;
         }
         for (byte b: X) {
-            newX[index] = b;
-            index++;
+            newX[i] = b;
+            i++;
         }
         for (byte b: x3) {
-            newX[index] = b;
-            index++;
+            newX[i] = b;
+            i++;
         }
+
         cSHAKE256(newX, L, "KMAC", S);
     }
 
-    //cSHAKE algo from NIST - cSHAKE hash of a message
+    /**
+     * perform cSHAKE256 hash of input
+     * @param X input data given
+     * @param L output length
+     * @param N name of function
+     * @param S character string
+     */
     void cSHAKE256(byte[] X, int L, String N, String S) {
         byte[] n = encodeString(N.getBytes(StandardCharsets.UTF_8));
         byte[] s = encodeString(S.getBytes(StandardCharsets.UTF_8));
@@ -81,17 +106,28 @@ public class KMACXOF256 {
         byte[] ret = new byte[retLength];
         System.arraycopy(retStart, 0, ret, 0, retStart.length);
         System.arraycopy(X, 0, ret, retStart.length, X.length);
-        ret[retLength-2] = 0;
-        ret[retLength-1] = 0;
 
-        inData = ret;
+        ret[retLength-1] = (byte) 0x80;
+        ret[retStart.length] ^= 0x80;
+
+        bytes = ret;
+
+        // initialize t and tPrime to the same value
+        t = new BigInteger(1, retStart);
+        tPrime = new BigInteger(1, retStart);
     }
 
 
-    //right encode function from NIST
+    /**
+     * takes big int and right encode byte array
+     * @param x big integer to encode
+     * @return byte array that represent right encode of big int
+     */
     byte[] rightEncode(BigInteger x) {
         byte[] retBytes = x.toByteArray();
-        byte[] addBytes = BigInteger.valueOf(retBytes.length).toByteArray();
+        //byte[] addBytes = BigInteger.valueOf(retBytes.length).toByteArray();
+        byte[] addBytes = BigInteger.valueOf(retBytes.length * 8).toByteArray();
+
         byte[] totalBytes = new byte[retBytes.length + addBytes.length];
 
         System.arraycopy(retBytes, 0, totalBytes, 0, retBytes.length);
@@ -101,10 +137,15 @@ public class KMACXOF256 {
     }
 
 
-    //left encode function from NIST
+    /**
+     * takes big int and left encode byte array
+     * @param x big integer to encode
+     * @return byte array that represent left encode of big int
+     */
     byte[] leftEncode(BigInteger x) {
         byte[] retBytes = x.toByteArray();
-        byte[] addBytes = BigInteger.valueOf(retBytes.length).toByteArray();
+        //byte[] addBytes = BigInteger.valueOf(retBytes.length).toByteArray();
+        byte[] addBytes = BigInteger.valueOf(retBytes.length * 8).toByteArray();
         byte[] totalBytes = new byte[retBytes.length + addBytes.length];
 
         System.arraycopy(addBytes, 0, totalBytes, 0, addBytes.length);
@@ -113,7 +154,11 @@ public class KMACXOF256 {
         return totalBytes;
     }
 
-    //encode string from NIST
+    /**
+     * input byte array and encode with left encode
+     * @param s given input of byte array to encode
+     * @return bytearray that has been encoded
+     */
     public byte[] encodeString(byte[] s) {
         byte[] first = leftEncode(BigInteger.valueOf(s.length));
         byte[] output = Arrays.copyOf(first, first.length + s.length);
@@ -121,7 +166,12 @@ public class KMACXOF256 {
         return output;
     }
 
-    //bytepad from NIST
+    /**
+     * take byte array and pad with zero
+     * @param X byte array to be padded
+     * @param w length of padded byte array
+     * @return padded byte array of X
+     */
     public byte[] bytepad(byte[] X, int w) {
         byte[] firstEncode = leftEncode(BigInteger.valueOf(w));
         byte[] z = new byte[firstEncode.length + X.length];
@@ -137,72 +187,93 @@ public class KMACXOF256 {
         return Arrays.copyOf(z, zLen + addZeroes);
     }
 
-
+    /**
+     * @return get hash of KMAC
+     */
     public byte[] retrieveData() {
-        return sha3(inData, mdLength);
+        return sha3(bytes);
     }
 
-    //keccakf function
-    public void keccakf(BigInteger[] state) {
+    /**
+     * keccak permutation with operations: theta, rho, pi, cho, and iota
+     * @param keccak big int array to apply
+     */
+    public void keccakf(BigInteger[] keccak) {
         endianConversion();
         for (int r = 0 ; r < 24; r++) {
             for (int i = 0; i < 5; i++) { //theta
-                bc[i] = state[i].xor(state[i+5]).xor(state[i+10]).xor(state[i+15]).xor(state[i+20]);
+                bc[i] = keccak[i].xor(keccak[i+5]).xor(keccak[i+10]).xor(keccak[i+15]).xor(keccak[i+20]);
             }
             for (int i = 0; i < 5; i++) {
-                t = bc[(i+4) % 5].xor(ROTL64(bc[(i+1) % 5], 1));
+                BigInteger[] tArr = new BigInteger[25];
+                for (int j = 0; j < 25; j++) {
+                    tArr[j] = keccak[j];
+                }
+                BigInteger t = bc[(i+4) % 5].xor(ROTL64(bc[(i+1) % 5], 1));
 
                 for (int j = 0; j < 25; j += 5) {
-                    state[j + 1] = state[j+1].xor(t);
+                    tArr[j + 1] = tArr[j+1].xor(t);
                 }
+                System.arraycopy(tArr, 0, keccak, 0, tArr.length);
             }
             //rho and pi
-            t = state[1];
+            BigInteger t = keccak[1];
+            BigInteger[] tPrimeArr = new BigInteger[24];
             for (int i = 0; i < 24; i++) {
                 int j = keccakf_piln[i];
-                bc[0] = state[j];
-                state[j] = ROTL64(t, rotationOffset[i]);
-                t = bc[0];
+                tPrimeArr[i] = keccak[j];
+                keccak[j] = ROTL64(t, rotationOffset[i]);
+                t = tPrimeArr[i];
             }
 
             //chi
             for (int j = 0; j < 25; j+=5) {
-                System.arraycopy(state, j, bc, 0, 5);
+                System.arraycopy(keccak, j, bc, 0, 5);
                 for (int i = 0; i < 5; i++)
-                    state[j+i] = state[j+1].xor(bc[(i+1)% 5].not()).and(bc[(i+2)%5]);
+                    keccak[j+i] = keccak[j+1].xor(bc[(i+1)% 5].not()).and(bc[(i+2)%5]);
             }
             //iota
-            state[0] = state[0].xor(RC[r]);
+            keccak[0] = keccak[0].xor(RC[r]);
         }
         endianConversion();
     }
-    //initialize context
-    void sha3_init(int mdlen) {
+
+
+    /**
+     * initialize SHA3
+     */
+    void sha3_init() {
         for (int i = 0; i < 25; i++)
-            myState[i] = BigInteger.ZERO;
-        pt = 0;
+            currState[i] = BigInteger.ZERO;
+        prevByte = 0;
     }
 
-    //update sha3 w/data
+    /**
+     * update SHA3 with given data
+     * @param data given to update
+     */
     void sha3_update(byte[] data) {
-        byte[] byteState = bigIntToByte(myState);
-        int j = pt;
+        byte[] byteState = bigIntToByte(currState);
+        int j = prevByte;
         for (byte datum : data) {
 
             byteState[j++] ^= datum;
 
             if (j >= mSize) {
-                myState = byteToBigInt(byteState);
-                keccakf(myState);
+                currState = byteToBigInt(byteState);
+                keccakf(currState);
                 j = 0;
             }
         }
-        myState = byteToBigInt(byteState);
-        pt = j;
-
+        currState = byteToBigInt(byteState);
+        prevByte = j;
     }
 
-    //converts big integer array to byte array
+    /**
+     * convert big int array to byte array
+     * @param bigIntArr array to convert to byte array
+     * @return byte array from given big int array
+     */
     static byte[] bigIntToByte(BigInteger[] bigIntArr) {
         byte[] byteState = new byte[200];
         int index = 0;
@@ -216,7 +287,11 @@ public class KMACXOF256 {
         return byteState;
     }
 
-    //converts byte array to big integer array
+    /**
+     * convert byte array to big int array
+     * @param byteArr given to convert to big int
+     * @return big int array that was converted from given byte array
+     */
     static BigInteger[] byteToBigInt(byte[] byteArr) {
         BigInteger[] intState = new BigInteger[25];
 
@@ -229,51 +304,66 @@ public class KMACXOF256 {
         return intState;
     }
 
-    //hash output from length
+    /**
+     * hash the length that was given
+     * @return byte array with given length of hash
+     */
     byte[] sha3_final() {
         byte[] md = new byte[mdLength];
         int curr = 0;
 
-        byte[] stateBytes = bigIntToByte(myState);
+        byte[] stateBytes = bigIntToByte(currState);
 
-        stateBytes[pt] ^= 0x06;
+        stateBytes[prevByte] ^= 0x06;
         stateBytes[mSize - 1] ^= 0x80;
-        myState = byteToBigInt(stateBytes);
-        keccakf(myState);
+        currState = byteToBigInt(stateBytes);
+        keccakf(currState);
 
-        stateBytes = bigIntToByte(myState);
+        stateBytes = bigIntToByte(currState);
 
         for (int x = 0; x < (mdLength / mSize); x++) {
             System.arraycopy(stateBytes, 0, md, curr, mSize);
             curr += mSize;
-            keccakf(myState);
-            stateBytes = bigIntToByte(myState);
+            keccakf(currState);
+            stateBytes = bigIntToByte(currState);
         }
         System.arraycopy(stateBytes, 0, md, curr, mdLength % mSize);
         return md;
     }
 
-    //hash from data given
-    byte[] sha3(byte[] in, int mdLen) {
-        sha3_init(mdLen);
+    /**
+     * hash from data that was given
+     * @param in input byte array
+     * @return hash of data
+     */
+    byte[] sha3(byte[] in) {
+        sha3_init();
         sha3_update(in);
         return sha3_final();
     }
 
-    //shifts left or right of value y
+    /**
+     * shifts bytes left or right based on value y
+     * @param x bigint number to be rotated
+     * @param y specifies number of bits to rotate
+     * @return bigint rotated by the input number
+     */
     public BigInteger ROTL64(BigInteger x, int y) {
         return x.shiftLeft(y).or(x.shiftRight(64 - y));
     }
 
+    /**
+     * convert endian from keccak operation
+     */
     private void endianConversion() {
         for (int i = 0; i < 25; i++) {
-            byte[] curr = myState[i].toByteArray();
+            byte[] curr = currState[i].toByteArray();
             byte[] rev = new byte[curr.length];
 
             for (int x = 0; x < curr.length; x++) {
                 rev[x] = curr[curr.length - x - 1];
             }
-            myState[i] = new BigInteger(rev);
+            currState[i] = new BigInteger(rev);
         }
     }
 }
